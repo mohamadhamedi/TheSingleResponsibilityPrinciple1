@@ -10,16 +10,41 @@ namespace TheSingleResponsibilityPrinciple1
     {
         public void ProcessTrades(Stream stream)
         {
-            var lines = new List<string>();
-            using (var reader = new StreamReader(stream))
-            {
-                string line;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    lines.Add(line);
-                }
-            }
+            var lines = ReadTradeData(stream);
 
+            var trades = ParsTrades(lines);
+
+            StoreTrades(trades);
+        }
+
+        private static void StoreTrades(IEnumerable<TradeRecord> trades)
+        {
+            using (var connection = new SqlConnection("Data Source=.;Initial Catalog=TradeDatabe;Integrated Security=True;"))
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    foreach (var trade in trades)
+                    {
+                        var command = connection.CreateCommand();
+                        command.Transaction = transaction;
+                        command.CommandType = System.Data.CommandType.StoredProcedure;
+                        command.CommandText = "dbo_insert";
+                        command.Parameters.AddWithValue("@sourceCurency", trade.SourceCurrency);
+                        command.Parameters.AddWithValue("@desimationCurrency", trade.DestinationCurrency);
+                        command.Parameters.AddWithValue("@lots", trade.Lots);
+                        command.Parameters.AddWithValue("@price", trade.Price);
+                        command.ExecuteNonQuery();
+                    }
+                    transaction.Commit();
+                }
+                connection.Close();
+            }
+            Console.WriteLine("INFO:{0} trades processed", trades.Count);
+        }
+
+        private static IEnumerable<TradeRecord> ParsTrades(IEnumerable<string> lines)
+        {
             var trades = new List<TradeRecord>();
             var lineCount = 1;
             foreach (var line in lines)
@@ -65,29 +90,24 @@ namespace TheSingleResponsibilityPrinciple1
                 lineCount++;
             }
 
-            using (var connection = new SqlConnection("Data Source=.;Initial Catalog=TradeDatabe;Integrated Security=True;"))
-            {
-                connection.Open();
-                using (var transaction = connection.BeginTransaction())
-                {
-                    foreach (var trade in trades)
-                    {
-                        var command = connection.CreateCommand();
-                        command.Transaction = transaction;
-                        command.CommandType = System.Data.CommandType.StoredProcedure;
-                        command.CommandText = "dbo_insert";
-                        command.Parameters.AddWithValue("@sourceCurency", trade.SourceCurrency);
-                        command.Parameters.AddWithValue("@desimationCurrency", trade.DestinationCurrency);
-                        command.Parameters.AddWithValue("@lots", trade.Lots);
-                        command.Parameters.AddWithValue("@price", trade.Price);
-                        command.ExecuteNonQuery();
-                    }
-                    transaction.Commit();
-                }
-                connection.Close();
-            }
-            Console.WriteLine("INFO:{0} trades processed", trades.Count);
+            return trades;
         }
+
+        private static IEnumerable<string> ReadTradeData(Stream stream)
+        {
+            var lines = new List<string>();
+            using (var reader = new StreamReader(stream))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    lines.Add(line);
+                }
+            }
+
+            return lines;
+        }
+
         private static float LotSize = 100000f;
 
     }
