@@ -50,47 +50,68 @@ namespace TheSingleResponsibilityPrinciple1
             foreach (var line in lines)
             {
                 var fields = line.Split(',');
-                if (fields.Length != 3)
+                if (!ValidateTradeData(fields, lineCount))
                 {
-                    Console.WriteLine("Warn:Line {0} malformed.Only {1} founds", lineCount, fields);
                     continue;
                 }
 
-                if (fields[0].Length != 6)
-                {
-                    Console.WriteLine("Warn:Trade counrecies on line {0} malformed:'{1}'", lineCount, fields[0]);
-                    continue;
-                }
+                var trade = MapTradeDataToTradeRecord(fields);
 
-                int tradeAmount = 0;
-                if (!int.TryParse(fields[1], out tradeAmount))
-                {
-                    Console.WriteLine("Warn:Trade amount on line {0} is not a valid integer:'{1}'", lineCount, fields[1]);
-                }
 
-                decimal tradePrice;
-                if (!decimal.TryParse(fields[2], out tradePrice))
-                {
-                    Console.WriteLine("Warn:Trade price on line {0} is not a valid decimal:'{1}'", lineCount, fields[2]);
-                }
-
-                var sourceCurrencyCode = fields[0].Substring(0, 3);
-                var destinationCurrencyCode = fields[0].Substring(3, 3);
-
-                //calculate values
-                var trade = new TradeRecord
-                {
-                    SourceCurrency = sourceCurrencyCode,
-                    DestinationCurrency = destinationCurrencyCode,
-                    Lots = tradeAmount / LotSize,
-                    Price = tradePrice
-                };
-
-                trades.Add(trade);
+                trades.Add((TradeRecord)trade);
                 lineCount++;
             }
 
             return trades;
+        }
+
+        private static object MapTradeDataToTradeRecord(string[] fields)
+        {
+            var sourceCurrencyCode = fields[0].Substring(0, 3);
+            var destinationCurrencyCode = fields[0].Substring(3, 3);
+            int tradeAmount = int.Parse(fields[1]);
+            int tradePrice = int.Parse(fields[2]);
+            //calculate values
+            var trade = new TradeRecord
+            {
+                SourceCurrency = sourceCurrencyCode,
+                DestinationCurrency = destinationCurrencyCode,
+                Lots = tradeAmount / LotSize,
+                Price = tradePrice
+            };
+            return trade;
+        }
+
+        private static bool ValidateTradeData(string[] fields, int lineCount)
+        {
+            if (fields.Length != 3)
+            {
+                Console.WriteLine("Warn:Line {0} malformed.Only {1} founds", lineCount, fields);
+                return false;
+            }
+
+            if (fields[0].Length != 6)
+            {
+                Console.WriteLine("Warn:Trade counrecies on line {0} malformed:'{1}'", lineCount, fields[0]);
+                return false;
+
+            }
+
+            int tradeAmount = 0;
+            if (!int.TryParse(fields[1], out tradeAmount))
+            {
+                Console.WriteLine("Warn:Trade amount on line {0} is not a valid integer:'{1}'", lineCount, fields[1]);
+                return false;
+            }
+
+            decimal tradePrice;
+            if (!decimal.TryParse(fields[2], out tradePrice))
+            {
+                Console.WriteLine("Warn:Trade price on line {0} is not a valid decimal:'{1}'", lineCount, fields[2]);
+                return false;
+            }
+            return true;
+
         }
 
         private static IEnumerable<string> ReadTradeData(Stream stream)
