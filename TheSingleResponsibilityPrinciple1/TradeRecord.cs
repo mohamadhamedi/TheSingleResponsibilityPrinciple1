@@ -1,6 +1,6 @@
 ﻿namespace TheSingleResponsibilityPrinciple1
 {
-    internal class TradeRecord
+    public class TradeRecord
     {
         public string SourceCurrency { get; set; }
         public string DestinationCurrency { get; set; }
